@@ -1,27 +1,47 @@
 # Event Sourcing with Kafka Streams
 
-This is a POC for using [Kafka Streams](https://kafka.apache.org/documentation/streams/)
-as a backbone for an event sourced system.
+This POC is based on [Amitay Horwitz's sample project](https://github.com/amitayh/event-sourcing-kafka-streams)
+and demonstrate how to use [Kafka Streams](https://kafka.apache.org/documentation/streams/)
+for implementing an event sourced system.
+
 
 ## Running the project locally
 
-### Setup
+The following instructions have been tested on OSX only, especially for the Docker part.
 
-1. Run Zookeeper / Kafka ([help](https://kafka.apache.org/quickstart))
+### Requirements
 
-2. Run MySQL ([help](https://dev.mysql.com/doc/mysql-getting-started/en/))
+1. sbt ([help](https://www.scala-sbt.org/))
+2. Docker
 
-3. Install the [schema](listdao/src/main/resources/schema.sql)
+### Start Kafka and MySQL in Docker, locally
 
-4. Install sbt ([help](https://www.scala-sbt.org/))
+1. Set `HOST_IP` env variable to the IP of the machine (not localhost!)
+   
+   On a MacBook you can use: 
+   
+   ```
+   $ export HOST_IP=$(ifconfig | grep -A 1 'en0' | tail -1 | cut -d ' ' -f 2)`
+   ```
 
-5. Build the project:
+2. Start  Kafka, Zookeeper, MySQL with Docker Compose and wait for the cluster to settle down:
+   (from `./docker`) 
+   
+   ```
+   $ docker-compose up -d
+   $ ../bin/wait_kafka.sh
+
+   ```
+
+### Build the project
+
+1. Build the project:
 
    ```
    $ sbt assembly
    ```
 
-6. Create the topics (edit `config/local.properties` as needed):
+2. Create the topics (edit `config/local.properties` as needed):
 
    ```
    $ bin/setup.sh config/local.properties
@@ -47,10 +67,24 @@ as a backbone for an event sourced system.
    $ bin/web.sh config/local.properties
    ```
 
+### Access application and data   
+
 If everything worked, you should be able to see the app running at `http://localhost:8080/index.html`
+
+MySQL is accessible on localhost:33306 (root/secret)
+
+### Stopping Kafka and MySQL
+
+1. (from `./docker`) 
+
+   ```
+   $ docker-compose down
+   ```
 
 ## License
 
-Copyright © 2018 Amitay Horwitz
+Original Copyright © 2018 Amitay Horwitz
 
 Distributed under the MIT License
+
+Additions by Lorenzo Nicora
