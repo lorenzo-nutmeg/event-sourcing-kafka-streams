@@ -7,6 +7,12 @@ trait Reducer[S, E] {
   def handle(s: S, e: E): S
 }
 
+/**
+  * Invoice Event handler:
+  *   applies different type of Event to update the state of the Invoice
+  *
+  * TODO I think this should live with Invoice
+  */
 object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
   override val empty: Invoice = Invoice.Draft
 
@@ -32,6 +38,7 @@ object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
   }
 }
 
+// TODO I think this should live with InvoiceSnapshot
 object SnapshotReducer extends Reducer[InvoiceSnapshot, Event] {
   override val empty: InvoiceSnapshot =
     InvoiceSnapshot(InvoiceReducer.empty, 0, Instant.MIN)

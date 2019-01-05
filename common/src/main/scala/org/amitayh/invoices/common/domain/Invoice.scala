@@ -2,6 +2,9 @@ package org.amitayh.invoices.common.domain
 
 import java.time.LocalDate
 
+/**
+  * State of the Invoice aggregate
+  */
 case class Invoice(customer: Customer,
                    issueDate: LocalDate,
                    dueDate: LocalDate,

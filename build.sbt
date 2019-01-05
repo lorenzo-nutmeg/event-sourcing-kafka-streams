@@ -103,6 +103,7 @@ lazy val dependencies =
     val catsRetryVersion        = "0.2.0"
     val origamiVersion          = "5.0.1"
     val producerVersion         = "5.0.0"
+    val scalaTestVersion        = "3.0.5"
 
     val logback         = "ch.qos.logback"        % "logback-classic"       % logbackVersion
     val slf4j           = "org.slf4j"             % "jcl-over-slf4j"        % slf4jVersion
@@ -120,11 +121,15 @@ lazy val dependencies =
     val doobieHikari    = "org.tpolecat"          %% "doobie-hikari"        % doobieVersion
     val avro4s          = "com.sksamuel.avro4s"   %% "avro4s-core"          % avro4sVersion
     val catsRetry       = "com.github.cb372"      %% "cats-retry-core"      % catsRetryVersion
+    
+    val scalaTest       = "org.scalatest"         %% "scalatest"            % scalaTestVersion % "test"
   }
 
 lazy val commonDependencies = Seq(
   dependencies.logback,
-  dependencies.slf4j
+  dependencies.slf4j,
+
+  dependencies.scalaTest
 )
 
 // SETTINGS
