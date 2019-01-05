@@ -8,15 +8,20 @@ trait Reducer[S, E] {
 }
 
 /**
-  * Invoice Event handler:
-  *   applies different type of Event to update the state of the Invoice
-  *
-  * TODO I think this should live with Invoice
+  * Invoice Event handler.
+  * It applies different type of Event to update the state of the Invoice
+  * It also defines the initial state of a pristine Invoice.
   */
 object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
+
+  // This implicitly defines the initial state of the Invoice
   override val empty: Invoice = Invoice.Draft
 
   override def handle(invoice: Invoice, event: Event.Payload): Invoice = event match {
+      // Here is the business logic defining the aggregate state changes when an event occurs.
+      // FIXME It looks inconsistent with the implementation of Command:
+      //       for Commands the business logic is in the `apply` method of Command.Payload subtype (no pattern matching)
+      //       for Events, the business logic is centralised in a single method using pattern matching
     case Event.InvoiceCreated(customerName, customerEmail, issueDate, dueDate) =>
       invoice
         .setCustomer(customerName, customerEmail)
@@ -38,7 +43,13 @@ object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
   }
 }
 
-// TODO I think this should live with InvoiceSnapshot
+/**
+  * Applies an Event to a snapshot
+  * It actually relies on the InvoiceReducer to update the Invoice state, but additionally stores the event timestamp and version.
+  *
+  * It also checks the version of the event corresponds to the snapshot it is going to be applied to
+  * (precisely, the Event version is the Snapshot version + 1)
+  */
 object SnapshotReducer extends Reducer[InvoiceSnapshot, Event] {
   override val empty: InvoiceSnapshot =
     InvoiceSnapshot(InvoiceReducer.empty, 0, Instant.MIN)

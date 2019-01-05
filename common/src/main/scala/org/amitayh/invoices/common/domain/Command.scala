@@ -12,11 +12,11 @@ case class Command(originId: UUID,
 
   def apply(timestamp: Instant, snapshot: InvoiceSnapshot): CommandResult = {
     val outcome = snapshot
-      .validateVersion(expectedVersion)
-      .flatMap(payload(_))
+      .validateVersion(expectedVersion) // Validate whether the expected aggregate version matches the actual version of the snapshot
+      .flatMap(payload(_)) //...applies the actual command payload, returning a Command.Result (i.e. Either a sequence of Event.Payloads or an error)
       .fold(
-        CommandResult.Failure,
-        success(timestamp, snapshot, _))
+        CommandResult.Failure, //... on error (left), returns a CommandResult.Failure
+        success(timestamp, snapshot, _)) //... on success (right), applies all Event.Payloads to the original snapshot
 
     CommandResult(originId, commandId, outcome)
   }
@@ -33,6 +33,12 @@ case class Command(originId: UUID,
 
 object Command {
   type Result = Either[InvoiceError, Seq[Event.Payload]]
+
+  // Different Command.Payload types define the business logic of the command handler:
+  // - Is the Command valid, given the current state of the aggregate?
+  // - What Event(s) should be emitted, as effect of the Command?
+  //
+  // Note that the aggregate state changes are NOT defined here, but in the InvoiceReducer
 
   sealed trait Payload {
     def apply(invoice: Invoice): Result
