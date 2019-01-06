@@ -38,6 +38,9 @@ class InvoicesApi[F[_]: Timer: Effect: InvoiceList] extends Http4sDsl[F] {
         .flatMap(producer.send(invoiceId, _))
         .flatMap(metaData => Accepted(Json.fromLong(metaData.timestamp)))
 
+      // FIXME This works only if you have a single-instance API server or if the CommandResult topic has a single partition
+      //        Otherwise, nothing guarantees the CommandResult is consumed by the same instance of the service that
+      //        processed the request
     case request @ POST -> Root / "execute" / UuidVar(invoiceId) =>
       request.as[Command].flatMap { command =>
         val response = resultStream(commandResultsTopic, command.commandId) merge timeoutStream

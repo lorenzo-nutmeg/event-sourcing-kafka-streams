@@ -1,8 +1,15 @@
 # Event Sourcing with Kafka Streams
 
-This POC is based on [Amitay Horwitz's sample project](https://github.com/amitayh/event-sourcing-kafka-streams)
-and demonstrate how to use [Kafka Streams](https://kafka.apache.org/documentation/streams/)
+It demonstrates how to use [Kafka Streams](https://kafka.apache.org/documentation/streams/)
 for implementing an event sourced system.
+
+### Credits
+
+This project is based on [Amitay Horwitz's work](https://github.com/amitayh/event-sourcing-kafka-streams), 
+presented at [JEEConf 2018](https://speakerdeck.com/amitayh/event-sourcing-with-kafka-streams) 
+and [CodeMotion Milan 2018](https://speakerdeck.com/amitayh/building-event-sourced-systems-with-kafka-streams).
+
+All credits go to [the author](https://github.com/amitayh.
 
 
 ## Running the project locally
@@ -85,6 +92,7 @@ MySQL is accessible on localhost:33306 (root/secret)
 
 Original Copyright © 2018 Amitay Horwitz
 
+Additions by Lorenzo Nicora
+
 Distributed under the MIT License
 
-Additions by Lorenzo Nicora
