@@ -53,7 +53,9 @@ lazy val commandhandler = project
     name := "commandhandler",
     commonSettings,
     assemblySettings,
-    libraryDependencies ++= commonDependencies
+    libraryDependencies ++= commonDependencies ++ Seq(
+      dependencies.kafkaStreamsTestUtils % Test
+    )
   )
   .dependsOn(common, streamprocessor)
 
@@ -121,15 +123,18 @@ lazy val dependencies =
     val doobieHikari    = "org.tpolecat"          %% "doobie-hikari"        % doobieVersion
     val avro4s          = "com.sksamuel.avro4s"   %% "avro4s-core"          % avro4sVersion
     val catsRetry       = "com.github.cb372"      %% "cats-retry-core"      % catsRetryVersion
-    
-    val scalaTest       = "org.scalatest"         %% "scalatest"            % scalaTestVersion % "test"
+
+    // Test dependencies
+    val scalaTest       = "org.scalatest"         %% "scalatest"            % scalaTestVersion
+    val kafkaStreamsTestUtils =
+                          "org.apache.kafka"      % "kafka-streams-test-utils" % kafkaVersion
   }
 
 lazy val commonDependencies = Seq(
   dependencies.logback,
   dependencies.slf4j,
 
-  dependencies.scalaTest
+  dependencies.scalaTest % Test
 )
 
 // SETTINGS

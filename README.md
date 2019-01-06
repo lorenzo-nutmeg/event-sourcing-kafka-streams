@@ -28,7 +28,7 @@ The following instructions have been tested on OSX only, especially for the Dock
    On a MacBook you can use: 
    
    ```
-   $ export HOST_IP=$(ifconfig | grep -A 1 'en0' | tail -1 | cut -d ' ' -f 2)`
+   $ export HOST_IP=$(ifconfig | grep -A 1 'en0' | tail -1 | cut -d ' ' -f 2)
    ```
 
 2. Start  Kafka, Zookeeper, MySQL with Docker Compose and wait for the cluster to settle down:

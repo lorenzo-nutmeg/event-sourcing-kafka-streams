@@ -7,18 +7,22 @@ import org.amitayh.invoices.common.Config
 import org.amitayh.invoices.common.domain.{CommandResult, Event, InvoiceSnapshot}
 import org.amitayh.invoices.common.serde.AvroSerde.{CommandResultSerde, CommandSerde, EventSerde, SnapshotSerde}
 import org.amitayh.invoices.common.serde.UuidSerde
-import org.amitayh.invoices.streamprocessor.StreamProcessorApp
+import org.amitayh.invoices.streamprocessor.{StreamProcessorApp, TopologyDefinition}
 import org.apache.kafka.streams.kstream.{Consumed, Produced, ValueMapper}
 import org.apache.kafka.streams.state.Stores
 import org.apache.kafka.streams.{StreamsBuilder, Topology}
 
 import scala.collection.JavaConverters._
 
-object CommandHandler extends StreamProcessorApp {
+object CommandHandler extends StreamProcessorApp with CommandHandlerTopologyDefinition {
 
   override def appId: String = "invoices.processor.command-handler"
 
-  override def topology: Topology = {
+}
+
+// Extracted topology definition to allow testing
+trait CommandHandlerTopologyDefinition extends TopologyDefinition {
+  def topology: Topology = {
     val builder = new StreamsBuilder
 
     builder.addStateStore(
@@ -53,7 +57,6 @@ object CommandHandler extends StreamProcessorApp {
 
     builder.build()
   }
-
 }
 
 object ToSuccessful extends ValueMapper[CommandResult, JIterable[CommandResult.Success]] {

@@ -8,11 +8,9 @@ import org.apache.kafka.streams.KafkaStreams.State
 import org.apache.kafka.streams.{KafkaStreams, StreamsConfig, Topology}
 import org.log4s.getLogger
 
-trait StreamProcessorApp extends App {
+trait StreamProcessorApp extends App with TopologyDefinition {
 
   def appId: String
-
-  def topology: Topology
 
   private val logger = getLogger
 
