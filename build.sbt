@@ -54,7 +54,7 @@ lazy val commandhandler = project
     commonSettings,
     assemblySettings,
     libraryDependencies ++= commonDependencies ++ Seq(
-      dependencies.kafkaStreamsTestUtils % Test
+      dependencies.mockedStreams % Test
     )
   )
   .dependsOn(common, streamprocessor)
@@ -99,13 +99,15 @@ lazy val dependencies =
     val http4sVersion           = "0.18.20"
     val circeVersion            = "0.10.0"
     val doobieVersion           = "0.5.3"
-    val kafkaVersion            = "2.1.0"
+    val kafkaVersion            = "2.0.0" // FIXME MockedStreams does not support Kafka 2.1.0 yet
     val mysqlConnectorVersion   = "8.0.12"
     val avro4sVersion           = "1.9.0"
     val catsRetryVersion        = "0.2.0"
     val origamiVersion          = "5.0.1"
     val producerVersion         = "5.0.0"
+
     val scalaTestVersion        = "3.0.5"
+    val mockedStreamsVersion    = "2.1.0"
 
     val logback         = "ch.qos.logback"        % "logback-classic"       % logbackVersion
     val slf4j           = "org.slf4j"             % "jcl-over-slf4j"        % slf4jVersion
@@ -126,8 +128,7 @@ lazy val dependencies =
 
     // Test dependencies
     val scalaTest       = "org.scalatest"         %% "scalatest"            % scalaTestVersion
-    val kafkaStreamsTestUtils =
-                          "org.apache.kafka"      % "kafka-streams-test-utils" % kafkaVersion
+    val mockedStreams   = "com.madewithtea"       %% "mockedstreams"        % mockedStreamsVersion
   }
 
 lazy val commonDependencies = Seq(

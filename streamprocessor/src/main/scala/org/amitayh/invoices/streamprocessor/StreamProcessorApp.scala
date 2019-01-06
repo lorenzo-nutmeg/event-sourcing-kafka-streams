@@ -5,7 +5,7 @@ import java.util.concurrent.CountDownLatch
 
 import org.amitayh.invoices.common.Config
 import org.apache.kafka.streams.KafkaStreams.State
-import org.apache.kafka.streams.{KafkaStreams, StreamsConfig, Topology}
+import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder, StreamsConfig, Topology}
 import org.log4s.getLogger
 
 trait StreamProcessorApp extends App with TopologyDefinition {
@@ -15,6 +15,10 @@ trait StreamProcessorApp extends App with TopologyDefinition {
   private val logger = getLogger
 
   private val latch = new CountDownLatch(1)
+
+  def topology: Topology = {
+    setupTopology(new StreamsBuilder).build()
+  }
 
   private val streams: KafkaStreams = {
     val props = new Properties
