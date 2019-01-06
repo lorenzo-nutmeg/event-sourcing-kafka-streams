@@ -9,7 +9,7 @@ This project is based on [Amitay Horwitz's work](https://github.com/amitayh/even
 presented at [JEEConf 2018](https://speakerdeck.com/amitayh/event-sourcing-with-kafka-streams) 
 and [CodeMotion Milan 2018](https://speakerdeck.com/amitayh/building-event-sourced-systems-with-kafka-streams).
 
-All credits go to [the author](https://github.com/amitayh.
+All credits go to [the author](https://github.com/amitayh).
 
 
 ## Running the project locally
