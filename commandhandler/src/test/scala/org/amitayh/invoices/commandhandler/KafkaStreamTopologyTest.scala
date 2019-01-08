@@ -5,11 +5,12 @@ import java.util.Properties
 import org.amitayh.invoices.streamprocessor.TopologyDefinition
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
+import org.apache.kafka.streams.state.KeyValueStore
 import org.apache.kafka.streams.test.ConsumerRecordFactory
-import org.apache.kafka.streams.{StreamsConfig, TopologyTestDriver}
+import org.apache.kafka.streams.{StreamsBuilder, StreamsConfig, TopologyTestDriver}
 
 
-// FIXME Move to stream processor (it is useful for testing other stream processors)
+// FIXME Move to streamprocessor (it is useful for testing other stream processors)
 trait KafkaStreamTopologyTest {
   this: TopologyDefinition =>
 
@@ -17,31 +18,30 @@ trait KafkaStreamTopologyTest {
 
   class InputTopic[K,V](topicName: String, keySerializer: Serializer[K], valueSerializer: Serializer[V]) {
     val recordFactory = new ConsumerRecordFactory(keySerializer, valueSerializer)
-
-    /**
-      * Pipe a message into a test input topic
-      */
     def pipeIn(key: K, value: V): Unit =
-      driver.pipeInput(recordFactory.create(topicName, key, value))
+        driver.pipeInput(recordFactory.create(topicName, key, value))
   }
 
   class OutputTopic[K,V](topicName: String, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]) {
-
-    /**
-      * Receive a message from a test output topic
-      */
     def receive: Option[ProducerRecord[K,V]] = {
       Option(driver.readOutput(topicName, keyDeserializer, valueDeserializer))
     }
   }
 
+  class KVStore[K,V](storeName: String) {
+    val store: KeyValueStore[K,V] = driver.getKeyValueStore(storeName)
+    def get(key: K): Option[V] = Option(store.get(key))
+  }
 
 
-  def createInputTopic[K,V](topicName: String, keySerializer: Serializer[K], valueSerializer: Serializer[V]): InputTopic[K,V] =
+  def inputTopic[K,V](topicName: String, keySerializer: Serializer[K], valueSerializer: Serializer[V]): InputTopic[K,V] =
     new InputTopic(topicName, keySerializer, valueSerializer)
 
-  def createOutputTopic[K,V](topicName: String, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]) =
+  def outputTopic[K,V](topicName: String, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]) =
     new OutputTopic(topicName, keyDeserializer, valueDeserializer)
+
+  def keyValueStore[K,V](storeName: String): KVStore[K,V] =
+    new KVStore(storeName)
 
   def testTopology(run: () => Unit): Unit = {
     before
@@ -59,7 +59,7 @@ trait KafkaStreamTopologyTest {
       props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234")
       props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
 
-      new TopologyTestDriver(topology, props)
+      new TopologyTestDriver(topology(new StreamsBuilder).build, props)
     }
   }
 

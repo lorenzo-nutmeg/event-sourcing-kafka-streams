@@ -1,7 +1,7 @@
 package org.amitayh.invoices.streamprocessor
 
-import org.apache.kafka.streams.Topology
+import org.apache.kafka.streams.StreamsBuilder
 
 trait TopologyDefinition {
-  def topology: Topology
+  def topology(builder: StreamsBuilder): StreamsBuilder
 }

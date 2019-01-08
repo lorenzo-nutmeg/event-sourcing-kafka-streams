@@ -16,3 +16,4 @@ project/plugins/project/
 .java-version
 .idea
 
+.DS_Store
