@@ -5,108 +5,106 @@
 # - a MySQL instance
 #
 #
-# Usage:
-# 1. Set `HOST_IP` env variable to the external IP of the machine (NOT to localhost!)
-#    For MacBookPro you may us:
-#       export HOST_IP=$(ifconfig | grep -A 1 'en0' | tail -1 | cut -d ' ' -f 2)
-# 2. `docker-compose up -d`
-#
 # Kafka brokers are accessible from the host machine on:
-#   kafka-1: localhost:19092
-#   kafka-2: localhost:29092
-#   kafka-3: localhost:39092
+#   kafka-1: localhost:9092
+#   kafka-2: localhost:9093
+#   kafka-3: localhost:9094
 #
 # Zookeper node is accessible from the host machine on:
-#   zk1: localhost:22181
+#   zk1: localhost:2181
 #
 # Schema-Registry is accessible from the host machine on:
-#   schema-registry: http://localhost:18081
+#   schema-registry: http://localhost:8081
 #
 # MySQL exposed on localhost:33306 (root pwd: "secret")
 
-version: '2'
+version: '2.2'
+
 services:
   zk1:
     image: confluentinc/cp-zookeeper:5.1.0
+    hostname: zk1
     ports:
-      - "22181:22181"
-      - "9999:9999"
+      - "2181:2181"
     environment:
       ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_CLIENT_PORT: 22181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_INIT_LIMIT: 5
-      ZOOKEEPER_SYNC_LIMIT: 2
-      ZOOKEEPER_SERVERS: zk1:22888:23888
-      KAFKA_JMX_HOSTNAME: ${HOST_IP}
-      KAFKA_JMX_PORT: 9999
+      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#      ZOOKEEPER_INIT_LIMIT: 5
+#      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zk1:12888:13888
 
-  kafka-1:
+
+  kafka1:
     image: confluentinc/cp-kafka:5.1.0
+    hostname: kafka1
     ports:
-      - "19092:19092"
-      - "19999:19999"
+      - "9092:9092"
     depends_on:
       - zk1
     environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zk1:2181"
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: ${HOST_IP}:22181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${HOST_IP}:19092
-      KAFKA_JMX_HOSTNAME: ${HOST_IP}
-      KAFKA_JMX_PORT: 19999
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
 
-  kafka-2:
+  kafka2:
     image: confluentinc/cp-kafka:5.1.0
+    hostname: kafka2
     ports:
-      - "29092:29092"
-      - "29999:29999"
+      - "9093:9093"
     depends_on:
       - zk1
     environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka2:19093,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zk1:2181"
       KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: ${HOST_IP}:22181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${HOST_IP}:29092
-      KAFKA_JMX_HOSTNAME: ${HOST_IP}
-      KAFKA_JMX_PORT: 29999
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
 
-  kafka-3:
+  kafka3:
     image: confluentinc/cp-kafka:5.1.0
+    hostname: kafka3
     ports:
-      - "39092:39092"
-      - "39999:39999"
+      - "9094:9094"
     depends_on:
       - zk1
     environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka3:19094,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zk1:2181"
       KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: ${HOST_IP}:22181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${HOST_IP}:39092
-      KAFKA_JMX_HOSTNAME: ${HOST_IP}
-      KAFKA_JMX_PORT: 39999
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
 
-#  schema-registry:
-#    image: confluentinc/cp-schema-registry:5.1.0
-#    ports:
-#      - "18081:18081"
-#    depends_on:
-#      - zk1
-#      - kafka-1
-#      - kafka-2
-#      - kafka-3
-#    environment:
-#      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: ${HOST_IP}:22181
-#      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
-#      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:18081
-#      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+  schema-registry:
+    image: confluentinc/cp-schema-registry:5.1.0
+    hostname: kafka-schema-registry
+    ports:
+      - "8081:8081"
+    depends_on:
+      - zk1
+      - kafka1
+      - kafka2
+      - kafka3
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:19092,PLAINTEXT://kafka2:19093,PLAINTEXT://kafka3:19094
+      SCHEMA_REGISTRY_HOST_NAME: kafka-schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
 
   db:
     image: invoices-db
+    hostname: invoices-db
     build:
       context: ./db
     ports:

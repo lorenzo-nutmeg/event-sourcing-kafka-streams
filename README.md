@@ -23,16 +23,7 @@ The following instructions have been tested on OSX only, especially for the Dock
 
 ### Start Kafka and MySQL in Docker, locally
 
-1. Set `HOST_IP` env variable to the IP of the machine (not localhost!)
-   
-   On a MacBook you can use: 
-   
-   ```
-   $ export HOST_IP=$(ifconfig | grep -A 1 'en0' | tail -1 | cut -d ' ' -f 2)
-   ```
-
-2. Start  Kafka, Zookeeper, MySQL with Docker Compose and wait for the cluster to settle down:
-   (from `./docker`) 
+From `./docker` directory: 
    
    ```
    $ docker-compose up -d
