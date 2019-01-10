@@ -1,10 +1,12 @@
 package org.amitayh.invoices.projector
 
-import org.amitayh.invoices.streamprocessor.StreamProcessorApp
+import org.amitayh.invoices.streamprocessor.{StreamProcessorApp, TopologyDefinition}
 
-object ListProjector extends StreamProcessorApp with ListProjectorTopologyDefinition {
+object ListProjector extends StreamProcessorApp {
 
   override def appId: String = "invoices.processor.list-projector"
+
+  override def topologyDefinition: TopologyDefinition = ListProjectorTopologyDefinition
 
 }
 

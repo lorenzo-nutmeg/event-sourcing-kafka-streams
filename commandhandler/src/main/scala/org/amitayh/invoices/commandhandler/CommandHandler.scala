@@ -14,11 +14,11 @@ import org.apache.kafka.streams.{StreamsBuilder, Topology}
 
 import scala.collection.JavaConverters._
 
-object CommandHandler extends StreamProcessorApp with CommandHandlerTopologyDefinition {
+object CommandHandler extends StreamProcessorApp  {
 
   override def appId: String = "invoices.processor.command-handler"
 
-
+  override def topologyDefinition: TopologyDefinition = CommandHandlerTopologyDefinition
 }
 
 

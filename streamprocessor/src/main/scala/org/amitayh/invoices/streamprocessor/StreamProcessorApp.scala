@@ -8,9 +8,11 @@ import org.apache.kafka.streams.KafkaStreams.State
 import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder, StreamsConfig, Topology}
 import org.log4s.getLogger
 
-trait StreamProcessorApp extends App with TopologyDefinition {
+trait StreamProcessorApp extends App {
 
   def appId: String
+
+  def topologyDefinition: TopologyDefinition
 
   private val logger = getLogger
 
@@ -21,13 +23,11 @@ trait StreamProcessorApp extends App with TopologyDefinition {
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, appId)
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, Config.BootstrapServers)
     props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
-    new KafkaStreams(buildTopology, props)
+
+    val builder = new StreamsBuilder
+    new KafkaStreams(topologyDefinition(builder).build, props)
   }
 
-  private def buildTopology: Topology = {
-    val builder = new StreamsBuilder
-    topology(builder).build
-  }
 
   streams.setStateListener((newState: State, oldState: State) => {
     logger.info(s"$oldState -> $newState")

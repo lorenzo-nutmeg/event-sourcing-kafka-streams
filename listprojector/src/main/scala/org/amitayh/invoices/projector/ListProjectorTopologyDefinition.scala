@@ -9,11 +9,11 @@ import org.amitayh.invoices.common.serde.AvroSerde.SnapshotSerde
 import org.amitayh.invoices.common.serde.UuidSerde
 import org.amitayh.invoices.dao.{InvoiceList, InvoiceRecord}
 import org.amitayh.invoices.streamprocessor.TopologyDefinition
-import org.apache.kafka.streams.{KeyValue, StreamsBuilder}
 import org.apache.kafka.streams.kstream.{Consumed, ForeachAction, KeyValueMapper}
+import org.apache.kafka.streams.{KeyValue, StreamsBuilder}
 
-trait ListProjectorTopologyDefinition extends TopologyDefinition {
-  def topology(builder: StreamsBuilder ): StreamsBuilder = {
+object ListProjectorTopologyDefinition extends TopologyDefinition {
+  def apply(builder: StreamsBuilder ): StreamsBuilder = {
     val snapshots = builder.stream(
       Config.Topics.Snapshots.name,
       Consumed.`with`(UuidSerde, SnapshotSerde))

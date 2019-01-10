@@ -10,8 +10,8 @@ import org.apache.kafka.streams.kstream.{Consumed, Produced}
 import org.apache.kafka.streams.state.Stores
 
 // Extracted topology definition to allow testing
-trait CommandHandlerTopologyDefinition extends TopologyDefinition {
-  def topology(builder: StreamsBuilder ): StreamsBuilder = {
+object CommandHandlerTopologyDefinition extends TopologyDefinition {
+  def apply(builder: StreamsBuilder ): StreamsBuilder = {
 
     builder.addStateStore(
       Stores.keyValueStoreBuilder(
