@@ -50,7 +50,12 @@ case class Invoice(customer: Customer,
 }
 
 object Invoice {
-  val Draft = Invoice(
+
+  // Represents a non-existing invoice
+  // FIXME This is just a fix over the previous implementation, as the same state was used as an initial state when processing
+  //        a CreateInvoice command, but also to represent a non-existing Invoice for all other commands.
+  //        The snapshot should probably contain a Option[Invoice] rather than Invoice and no Invoice.None should exist
+  val None = Invoice(
     customer = Customer.Empty,
     issueDate = LocalDate.MIN,
     dueDate = LocalDate.MAX,

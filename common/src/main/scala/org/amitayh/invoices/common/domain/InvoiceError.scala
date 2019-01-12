@@ -11,3 +11,11 @@ case class VersionMismatch(actual: Int, expected: Option[Int]) extends InvoiceEr
 case class LineItemDoesNotExist(index: Int) extends InvoiceError {
   override def message: String = s"Line item #$index does not exist"
 }
+
+case class InvoiceDoesNotExist() extends InvoiceError {
+  override def message: String = "Trying to modify the state of a non-existing Invoice"
+}
+
+case class InvoiceAlreadyExists() extends InvoiceError {
+  override def message: String = "Trying to create an invoice that already exists"
+}
