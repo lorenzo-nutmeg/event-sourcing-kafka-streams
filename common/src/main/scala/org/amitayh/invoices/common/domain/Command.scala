@@ -3,8 +3,6 @@ package org.amitayh.invoices.common.domain
 import java.time.{Instant, LocalDate}
 import java.util.UUID
 
-import org.amitayh.invoices.common.domain.Command.failure
-
 import scala.collection.immutable.Seq
 
 case class Command(originId: UUID,
@@ -83,7 +81,7 @@ object Command {
   case class RemoveLineItem(index: Int) extends Payload {
     override def apply(invoice: Invoice): Result = invoice match {
       case Invoice.None => failure(InvoiceDoesNotExist())
-      case _  if (invoice.hasLineItem(index)) => success(Event.LineItemRemoved(index))
+      case _ if (invoice.hasLineItem(index)) => success(Event.LineItemRemoved(index))
       case _ => failure(LineItemDoesNotExist(index))
     }
 
