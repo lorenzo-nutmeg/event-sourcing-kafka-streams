@@ -1,7 +1,5 @@
 package org.amitayh.invoices.common.domain
 
-import java.time.Instant
-
 trait Reducer[S, E] {
   def empty: S
   def handle(s: S, e: E): S
@@ -15,7 +13,8 @@ trait Reducer[S, E] {
 object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
 
   // This implicitly defines the initial state of the Invoice
-  override val empty: Invoice = Invoice.Draft
+  // FIXME this is not quite right: it works for CreateInvoice, but makes other commands not to fail when the invoice does not exist
+  override val empty: Invoice = Invoice.None
 
   override def handle(invoice: Invoice, event: Event.Payload): Invoice = event match {
       // Here is the business logic defining the aggregate state changes when an event occurs.
@@ -51,8 +50,7 @@ object InvoiceReducer extends Reducer[Invoice, Event.Payload] {
   * (precisely, the Event version is the Snapshot version + 1)
   */
 object SnapshotReducer extends Reducer[InvoiceSnapshot, Event] {
-  override val empty: InvoiceSnapshot =
-    InvoiceSnapshot(InvoiceReducer.empty, 0, Instant.MIN)
+  override val empty: InvoiceSnapshot = EmptyInvoiceSnapshot
 
   override def handle(snapshot: InvoiceSnapshot, event: Event): InvoiceSnapshot = {
     if (versionsMatch(snapshot, event)) updateSnapshot(snapshot, event)

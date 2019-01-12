@@ -3,6 +3,8 @@ package org.amitayh.invoices.common.domain
 import java.time.{Instant, LocalDate}
 import java.util.UUID
 
+import org.amitayh.invoices.common.domain.Command.failure
+
 import scala.collection.immutable.Seq
 
 case class Command(originId: UUID,
@@ -51,9 +53,14 @@ object Command {
                            lineItems: List[LineItem]) extends Payload {
 
     override def apply(invoice: Invoice): Result = {
-      val createdEvent = Event.InvoiceCreated(customerName, customerEmail, issueDate, dueDate)
-      val lineItemEvents = lineItems.map(toLineItemEvent)
-      success(createdEvent :: lineItemEvents)
+      invoice match {
+        case Invoice.None => {
+          val createdEvent = Event.InvoiceCreated(customerName, customerEmail, issueDate, dueDate)
+          val lineItemEvents = lineItems.map(toLineItemEvent)
+          success(createdEvent :: lineItemEvents)
+        }
+        case _ => failure(InvoiceAlreadyExists())
+      }
     }
 
     private def toLineItemEvent(lineItem: LineItem): Event.Payload =
@@ -66,25 +73,36 @@ object Command {
   case class AddLineItem(description: String,
                          quantity: Double,
                          price: Double) extends Payload {
-    override def apply(invoice: Invoice): Result =
-      success(Event.LineItemAdded(description, quantity, price))
-  }
+    override def apply(invoice: Invoice): Result = invoice match {
+      case Invoice.None => failure(InvoiceDoesNotExist())
+      case _ => success(Event.LineItemAdded(description, quantity, price))
 
-  case class RemoveLineItem(index: Int) extends Payload {
-    override def apply(invoice: Invoice): Result = {
-      if (invoice.hasLineItem(index)) success(Event.LineItemRemoved(index))
-      else failure(LineItemDoesNotExist(index))
     }
   }
 
+  case class RemoveLineItem(index: Int) extends Payload {
+    override def apply(invoice: Invoice): Result = invoice match {
+      case Invoice.None => failure(InvoiceDoesNotExist())
+      case _  if (invoice.hasLineItem(index)) => success(Event.LineItemRemoved(index))
+      case _ => failure(LineItemDoesNotExist(index))
+    }
+
+  }
+
   case class PayInvoice() extends Payload {
-    override def apply(invoice: Invoice): Result =
-      success(Event.PaymentReceived(invoice.total))
+    // FIXME It should fail if the invoice is already paid
+    override def apply(invoice: Invoice): Result = invoice match {
+      case Invoice.None => failure(InvoiceDoesNotExist())
+      case _ => success(Event.PaymentReceived(invoice.total))
+    }
   }
 
   case class DeleteInvoice() extends Payload {
-    override def apply(invoice: Invoice): Result =
-      success(Event.InvoiceDeleted())
+    override def apply(invoice: Invoice): Result = invoice match {
+      case Invoice.None => failure(InvoiceDoesNotExist())
+      case _ => success(Event.InvoiceDeleted())
+    }
+
   }
 
   private def success(events: Event.Payload*): Result = success(events.toList)
