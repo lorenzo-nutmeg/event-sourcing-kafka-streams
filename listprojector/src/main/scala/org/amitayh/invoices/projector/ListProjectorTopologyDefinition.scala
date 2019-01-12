@@ -21,6 +21,8 @@ object ListProjectorTopologyDefinition extends TopologyDefinition {
     snapshots
       .map[UUID, InvoiceRecord](ToRecord)
       .foreach(SaveInvoiceRecord)
+
+    builder
   }
 }
 

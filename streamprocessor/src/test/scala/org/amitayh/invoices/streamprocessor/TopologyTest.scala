@@ -1,15 +1,12 @@
-package org.amitayh.invoices.commandhandler
+package org.amitayh.invoices.streamprocessor
 
 import java.util.Properties
 
-import org.amitayh.invoices.streamprocessor.TopologyDefinition
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.apache.kafka.streams.state.KeyValueStore
 import org.apache.kafka.streams.test.ConsumerRecordFactory
 import org.apache.kafka.streams.{StreamsBuilder, StreamsConfig, TopologyTestDriver => Driver}
-
-
 trait TopologyTest {
 
   def topologyDefinitionUnderTest: TopologyDefinition
@@ -21,7 +18,7 @@ trait TopologyTest {
 
   // Run with additional properties
   def test(props: Properties)(run: ( () => Driver ) => Unit ): Unit = {
-    val driver = before(props)
+    implicit val driver = before(props)
     try {
       run( () => driver )
     } finally {
@@ -45,24 +42,24 @@ trait TopologyTest {
 
 
 
-  case class InputTopic[K,V](topicName: String, keySerializer: Serializer[K], valueSerializer: Serializer[V]) {
+  case class InputTopic[K,V](val topicName: String, keySerializer: Serializer[K], valueSerializer: Serializer[V]) {
     private val recordFactory = new ConsumerRecordFactory(keySerializer, valueSerializer)
 
-    def pipeIn(driver: () => Driver)(key: K, value: V): this.type = {
+    def pipeIn(key: K, value: V)(implicit driver: () => Driver): this.type = {
       driver().pipeInput(recordFactory.create(topicName, key, value))
       this
     }
   }
 
-  case class OutputTopic[K,V](topicName: String, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]) {
-    def popOut( driver: () => Driver): Option[ProducerRecord[K,V]] = {
+  case class OutputTopic[K,V](val topicName: String, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]) {
+    def popOut(implicit driver: () => Driver): Option[ProducerRecord[K,V]] = {
       Option(driver().readOutput(topicName, keyDeserializer, valueDeserializer))
     }
   }
 
-  case class KVStore[K,V](storeName: String) {
+  case class KVStore[K,V](val storeName: String) {
     private def store(driver: Driver): KeyValueStore[K,V] = driver.getKeyValueStore(storeName)
-    def get(driver: () => Driver)( key: K): Option[V] = Option(store(driver()).get(key))
-    def put(driver: () => Driver)( key:K, value: V): Unit = store(driver()).put(key, value)
+    def get(key: K)(implicit driver: () => Driver): Option[V] = Option(store(driver()).get(key))
+    def put( key:K, value: V)(implicit driver: () => Driver): Unit = store(driver()).put(key, value)
   }
 }

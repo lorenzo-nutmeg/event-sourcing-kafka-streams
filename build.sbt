@@ -43,7 +43,8 @@ lazy val streamprocessor = project
     name := "streamprocessor",
     commonSettings,
     libraryDependencies ++= commonDependencies ++ Seq(
-      dependencies.kafkaStreams
+      dependencies.kafkaStreams,
+      dependencies.kafkaStreamsTestUtils % Test
     )
   )
   .dependsOn(common)

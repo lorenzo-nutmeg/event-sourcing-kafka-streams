@@ -5,15 +5,15 @@ import java.time.LocalDate.now
 import java.util.UUID.randomUUID
 import java.util.{Properties, UUID}
 
-import org.amitayh.invoices.commandhandler.CommandHandlerTopologyDefinitionSpec._
-import org.amitayh.invoices.commandhandler.CommandHandlerTopologyDefinitionSpec.{aCreateInvoiceCommand, aDeleteInvoiceCommand, anEmptyInvoiceSnapshot}
+import org.amitayh.invoices.commandhandler.CommandHandlerTopologyDefinitionSpec.{aCreateInvoiceCommand, aDeleteInvoiceCommand, anEmptyInvoiceSnapshot, _}
 import org.amitayh.invoices.common.Config
 import org.amitayh.invoices.common.domain.Command.{CreateInvoice, DeleteInvoice}
 import org.amitayh.invoices.common.domain.Event.{InvoiceCreated, InvoiceDeleted}
 import org.amitayh.invoices.common.domain._
 import org.amitayh.invoices.common.serde.AvroSerde.{CommandResultSerde, CommandSerde, EventSerde, SnapshotSerde}
 import org.amitayh.invoices.common.serde.{UuidDeserializer, UuidSerializer}
-import org.apache.kafka.streams.StreamsConfig
+import org.amitayh.invoices.streamprocessor.TopologyTest
+import org.apache.kafka.streams.{StreamsConfig, TopologyTestDriver => Driver}
 import org.scalatest.{FunSpec, Matchers, OptionValues}
 
 class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest with Matchers with OptionValues{
@@ -33,53 +33,27 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
       val command = aCreateInvoiceCommand
       val invoiceId = randomUUID
 
-      it("should emit a successful CommandResult, an InvoiceCreated event and an InvoiceSnapshot, with version=1 and InvoiceState=New") {
+      it("should emit a successful CommandResult, an InvoiceCreated event and an InvoiceSnapshot, with version=1 and InvoiceState=New, and should create a new Snapshot in the state store") {
 
         test(exactlyOnce)( driver => {
-
-          commandTopic.pipeIn(driver)(invoiceId, command)
-
-          val commandResultRecord = commandResultTopic.popOut(driver)
-          val eventRecord = eventTopic.popOut(driver)
-          val snapshotRecord = snapshotTopic.popOut(driver)
-
-
-          val commandResult: CommandResult = commandResultRecord.value.value
-          commandResult.outcome shouldBe a[CommandResult.Success]
-
-
-          val event: Event = eventRecord.value.value
-          event.commandId should be(command.commandId)
-          event.version should be(1)
-          event.payload shouldBe a[InvoiceCreated]
-
-
-          val invoiceSnapshot: InvoiceSnapshot = snapshotRecord.value.value
-          invoiceSnapshot.version should be(1)
-          invoiceSnapshot.invoice.status should be(InvoiceStatus.New)
-
-
-          assert(commandResultTopic.popOut(driver) isEmpty, "No more CommandResults expected")
-          assert(eventTopic.popOut(driver) isEmpty, "No more Events expected")
-          assert(snapshotTopic.popOut(driver) isEmpty, "No more InvoiceSnapshots expected")
-        })
-
-      }
-
-      it("should add an entry to the state store, with status 'New' and version = 1") {
-        test(exactlyOnce)( driver => {
+          implicit val d = driver
 
           // Record not there
-          val snapshotStateBefore = snapshotStore.get(driver)(invoiceId)
-          snapshotStateBefore should not be ('defined)
+          assertSnapshotStateDoesNotExist(snapshotStore)(invoiceId)
 
-          commandTopic.pipeIn(driver)(invoiceId, command)
+          commandTopic.pipeIn(invoiceId, command)
 
-          // Now the Record is there
-          val snapshotStateAfter = snapshotStore.get(driver)(invoiceId)
-          snapshotStateAfter.value.invoice.status should be (InvoiceStatus.New)
-          snapshotStateAfter.value.version should be (1)
+          assertNextCommandResultIsSuccess(commandResultTopic)
+          assertNextEventIsEventTypeAndVersionAndCommandId(eventTopic)(classOf[InvoiceCreated], 1, command.commandId)
+          assertNextSnapshotHasInvoiceStatusAndVersion(snapshotTopic)(InvoiceStatus.New, 1)
+          assertSnapshotStateInvoiceStatusAndVersion(snapshotStore)(invoiceId)(InvoiceStatus.New, 1 )
+
+
+          assertNoMoreMessages(commandResultTopic)
+          assertNoMoreMessages(eventTopic)
+          assertNoMoreMessages(eventTopic)
         })
+
       }
     }
 
@@ -91,49 +65,70 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
       val command = aDeleteInvoiceCommand(Option(initialVersion))
 
       describe("on an existing invoice") {
-        it("should emit an InvoiceSnapshot, a successful CommandResult and an InvoiceDeleted event with status 'Deleted' and version incremented by 1") {
+        it("should emit an InvoiceSnapshot, a successful CommandResult and an InvoiceDeleted event with status 'Deleted' and version incremented by 1, should update the state store with an InvoiceSnapshot in status=Deleted and version incremented by 1") {
 
-          test(exactlyOnce)((driver ) => {
-            snapshotStore.put(driver)(invoiceId, initialInvoiceSnapshot)
+          test(exactlyOnce)((driver) => {
+            implicit val d = driver
 
-            commandTopic.pipeIn(driver)(invoiceId, command)
+            snapshotStore.put(invoiceId, initialInvoiceSnapshot)
 
-            val commandResultRecord = commandResultTopic.popOut(driver)
-            val eventRecord = eventTopic.popOut(driver)
-            val snapshotRecord = snapshotTopic.popOut(driver)
+            commandTopic.pipeIn(invoiceId, command)
 
 
-            val invoiceSnapshot: InvoiceSnapshot = snapshotRecord.value.value
-            invoiceSnapshot.version should be(initialVersion + 1)
-            invoiceSnapshot.invoice.status should be(InvoiceStatus.Deleted)
+            assertNextCommandResultIsSuccess(commandResultTopic)
+            assertNextEventIsEventTypeAndVersionAndCommandId(eventTopic)(classOf[InvoiceDeleted], initialVersion + 1, command.commandId)
+            assertNextSnapshotHasInvoiceStatusAndVersion(snapshotTopic)(InvoiceStatus.Deleted, initialVersion + 1)
+            assertSnapshotStateInvoiceStatusAndVersion(snapshotStore)(invoiceId)(InvoiceStatus.Deleted, initialVersion+1 )
 
-            val commandResult: CommandResult = commandResultRecord.value.value
-            commandResult.outcome shouldBe a[CommandResult.Success]
-
-
-            val event: Event = eventRecord.value.value
-            event.commandId should be(command.commandId)
-            event.version should be(initialVersion + 1)
-            event.payload shouldBe a[InvoiceDeleted]
-          })
-        }
-
-        it("should update the state store with an InvoiceSnapshot in status=Deleted and version incremented by 1") {
-          test(exactlyOnce)((driver ) => {
-            snapshotStore.put(driver)(invoiceId, initialInvoiceSnapshot)
-
-            commandTopic.pipeIn(driver)(invoiceId, command)
-
-            val snapshotStateAfter = snapshotStore.get(driver)(invoiceId)
-            snapshotStateAfter.value.invoice.status should be (InvoiceStatus.Deleted)
-            snapshotStateAfter.value.version should be (initialVersion + 1)
           })
         }
       }
 
+
+      // TODO Test other events
     }
   }
+
+  def assertSnapshotStateInvoiceStatusAndVersion(store: KVStore[UUID,InvoiceSnapshot])(invoiceId: UUID)(expectedInvoiceStatus: InvoiceStatus, expectedVersion: Int  )(implicit driver: () => Driver) = {
+    val snapshotStateAfter = store.get(invoiceId)
+    snapshotStateAfter.value.invoice.status should be (expectedInvoiceStatus)
+    snapshotStateAfter.value.version should be (expectedVersion)
+  }
+
+  def assertSnapshotStateDoesNotExist(store: KVStore[UUID,InvoiceSnapshot])(invoiceId: UUID)(implicit driver: () => Driver) = {
+    val snapshotStateBefore = store.get(invoiceId)
+    snapshotStateBefore should not be ('defined)
+  }
+
+  def assertNextCommandResultIsSuccess(topic: TopologyTest#OutputTopic[UUID,CommandResult])(implicit driver: () => Driver) = {
+    val maybeRecord = topic.popOut
+    val commandResult: CommandResult = maybeRecord.value.value
+    commandResult.outcome shouldBe a[CommandResult.Success]
+  }
+
+
+  def assertNextEventIsEventTypeAndVersionAndCommandId(topic: TopologyTest#OutputTopic[UUID,Event])(expectedEventType: Class[_], expectedVersion: Int, expectedCommandId: UUID )(implicit driver: () => Driver) = {
+    val eventRecord = topic.popOut
+    val event: Event = eventRecord.value.value
+    event.commandId should be(expectedCommandId)
+    event.version should be(expectedVersion)
+    assert( event.payload.getClass == expectedEventType)
+
+  }
+
+
+  def assertNextSnapshotHasInvoiceStatusAndVersion(topic: TopologyTest#OutputTopic[UUID,InvoiceSnapshot])(expectedInvoiceStatus: InvoiceStatus, expectedVersion: Int  )(implicit driver: () => Driver) = {
+    val snapshotRecord = topic.popOut
+    val invoiceSnapshot: InvoiceSnapshot = snapshotRecord.value.value
+    invoiceSnapshot.version should be(expectedVersion)
+    invoiceSnapshot.invoice.status should be(expectedInvoiceStatus)
+  }
+
+  def assertNoMoreMessages(topic: TopologyTest#OutputTopic[UUID,_])(implicit driver: () => Driver) = {
+    assert(topic.popOut isEmpty, "No more messages expected in '" + topic.topicName + "'")
+  }
 }
+
 
 object CommandHandlerTopologyDefinitionSpec {
 
