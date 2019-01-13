@@ -10,7 +10,7 @@ import org.amitayh.invoices.common.Config
 import org.amitayh.invoices.common.Config.Topics
 import org.amitayh.invoices.common.domain.Command
 import org.amitayh.invoices.common.serde.AvroSerde.{CommandResultSerde, SnapshotSerde}
-import org.amitayh.invoices.common.serde.{CommandSerializer, UuidSerde, UuidSerializer}
+import org.amitayh.invoices.common.serde.{AvroSerde, UuidSerde, UuidSerializer}
 import org.amitayh.invoices.web.PushEvents._
 import org.http4s.server.blaze.BlazeBuilder
 
@@ -21,7 +21,7 @@ object InvoicesServer extends StreamApp[IO] {
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, ExitCode] = for {
 
     // FIXME Can't we replace CommandSerializer with AvroSerde.CommandSerde.serializer?
-    producer <- Kafka[IO].producer(Config.Topics.Commands, UuidSerializer, CommandSerializer)
+    producer <- Kafka[IO].producer(Config.Topics.Commands, UuidSerializer, AvroSerde.CommandSerde.serializer)
     commandResultsTopic <- Stream.eval(Topic[IO, CommandResultRecord](None))
     invoiceUpdatesTopic <- Stream.eval(Topic[IO, InvoiceSnapshotRecord](None))
     server <- httpServer(producer, commandResultsTopic, invoiceUpdatesTopic) concurrently
