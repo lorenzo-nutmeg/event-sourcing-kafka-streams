@@ -13,13 +13,13 @@ case class InvoiceSnapshot(invoice: Invoice,
 
   def validateVersion(expectedVersion: Option[Int]): Either[InvoiceError, Invoice] =
     if (expectedVersion.forall(_ == version)) Right(invoice)
-    else Left(VersionMismatch(version, expectedVersion))
+    else Left(VersionMismatch(Option(version), expectedVersion))
 
 }
 
 object EmptyInvoiceSnapshot extends InvoiceSnapshot(InvoiceReducer.empty, 0, Instant.MIN) {
   override def validateVersion(expectedVersion: Option[Int]): Either[InvoiceError, Invoice] =
     expectedVersion
-        .fold[Either[InvoiceError, Invoice]](Right(Invoice.None))(_ => Left(VersionMismatch(0, expectedVersion)))
+        .fold[Either[InvoiceError, Invoice]](Right(Invoice.None))(_ => Left(VersionMismatch(None, expectedVersion)))
 
 }

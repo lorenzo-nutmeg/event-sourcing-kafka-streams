@@ -29,7 +29,7 @@ class AvroSerdeSpec extends FunSpec  with Matchers with OptionValues {
 
 
     describe("given a failed CommandResult containing a VersionMismatch error") {
-      val error = VersionMismatch(42, Option(13))
+      val error = VersionMismatch(Option(42), Option(13))
       val failCommandResult: CommandResult = aFailedCommandResult(error)
       it("should be able to serialize and deserialize back to the same content") {
         assertItCanSerialiseAndDeserializeBack(serde)(failCommandResult)

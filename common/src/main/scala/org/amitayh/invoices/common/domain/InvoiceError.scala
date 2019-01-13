@@ -4,7 +4,7 @@ sealed trait InvoiceError {
   def message: String
 }
 
-case class VersionMismatch(actual: Int, expected: Option[Int]) extends InvoiceError {
+case class VersionMismatch(actual: Option[Int], expected: Option[Int]) extends InvoiceError {
   override def message: String = s"Version mismatch - expected '$expected', actually '$actual'"
 }
 
