@@ -1,5 +1,7 @@
 # Event Sourcing with Kafka Streams
 
+[![Build Status](https://travis-ci.org/nicusX/event-sourcing-kafka-streams.svg?branch=master)](https://travis-ci.org/nicusX/event-sourcing-kafka-streams)
+
 It demonstrates how to use [Kafka Streams](https://kafka.apache.org/documentation/streams/)
 for implementing an event sourced system.
 
