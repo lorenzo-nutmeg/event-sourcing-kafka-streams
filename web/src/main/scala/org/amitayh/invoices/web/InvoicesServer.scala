@@ -19,6 +19,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object InvoicesServer extends StreamApp[IO] {
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, ExitCode] = for {
+
+    // FIXME Can't we replace CommandSerializer with AvroSerde.CommandSerde.serializer?
     producer <- Kafka[IO].producer(Config.Topics.Commands, UuidSerializer, CommandSerializer)
     commandResultsTopic <- Stream.eval(Topic[IO, CommandResultRecord](None))
     invoiceUpdatesTopic <- Stream.eval(Topic[IO, InvoiceSnapshotRecord](None))

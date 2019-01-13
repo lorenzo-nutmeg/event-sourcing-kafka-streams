@@ -67,19 +67,35 @@ From `./docker` directory:
    $ bin/web.sh config/local.properties
    ```
 
-### Access application and data   
-
-If everything worked, you should be able to see the app running at `http://localhost:8080/index.html`
-
-MySQL is accessible on localhost:33306 (root/secret)
-
 ### Stopping Kafka and MySQL
 
-1. (from `./docker`) 
+(from `./docker`) 
 
    ```
    $ docker-compose down
    ```
+
+Tearing down the cluster properly clear its state (topics setup, contents)
+   
+### Demo application
+
+If everything worked, you should be able to see the app running at `http://localhost:8080/index.html`
+
+### Directly access Kafka and MySQL
+
+To access Kafka and MySQL directly:
+
+Kafka  (`PLAINTEXT`)
+- `kafka-1`: `localhost:9092`
+- `kafka-2`: `localhost:9093`
+- `kafka-3`: `localhost:9094`
+
+Zookeeper:
+- `zk1`: `localhost:2181`
+
+MySQL:
+- `localhost:33306`  (`root`/`secret` or `mysqluser`/`secret`)
+
 
 ## License
 
