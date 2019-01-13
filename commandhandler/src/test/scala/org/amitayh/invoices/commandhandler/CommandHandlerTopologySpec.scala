@@ -5,10 +5,10 @@ import java.time.LocalDate.now
 import java.util.UUID.randomUUID
 import java.util.{Properties, UUID}
 
-import org.amitayh.invoices.commandhandler.CommandHandlerTopologyDefinitionSpec._
+import org.amitayh.invoices.commandhandler.CommandHandlerTopologySpec._
 import org.amitayh.invoices.common.Config
-import org.amitayh.invoices.common.domain.Command.{AddLineItem, CreateInvoice, DeleteInvoice}
-import org.amitayh.invoices.common.domain.Event.{InvoiceCreated, InvoiceDeleted, LineItemAdded}
+import org.amitayh.invoices.common.domain.Command._
+import org.amitayh.invoices.common.domain.Event.{apply => _, _}
 import org.amitayh.invoices.common.domain._
 import org.amitayh.invoices.common.serde.AvroSerde.{CommandResultSerde, CommandSerde, EventSerde, SnapshotSerde}
 import org.amitayh.invoices.common.serde.{UuidDeserializer, UuidSerializer}
@@ -16,7 +16,7 @@ import org.amitayh.invoices.streamprocessor.TopologyTest
 import org.apache.kafka.streams.{StreamsConfig, TopologyTestDriver => Driver}
 import org.scalatest.{FunSpec, Matchers, OptionValues}
 
-class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest with Matchers with OptionValues{
+class CommandHandlerTopologySpec extends FunSpec with TopologyTest with Matchers with OptionValues{
 
   override def topologyDefinitionUnderTest = CommandHandlerTopologyDefinition
 
@@ -61,7 +61,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         val invoiceId = randomUUID
         val command = aCreateInvoiceCommand
 
-        it("should emit a Failure CommandResult and DO NOT emit any event or snapshot and do not change the state of the existing invoice") {
+        it("should emit a failed CommandResult and DO NOT emit any event or snapshot and do not change the state store") {
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
@@ -82,7 +82,6 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
 
     describe("when receiving a DeleteInvoice command") {
 
-
       describe("on an existing invoice") {
         val initialVersion = 1
         val initialInvoiceSnapshot = anEmptyInvoiceSnapshot(initialVersion, InvoiceStatus.New)
@@ -90,7 +89,6 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         val command = aDeleteInvoiceCommand(Option(initialVersion))
 
         it("should emit an InvoiceSnapshot, a successful CommandResult and an InvoiceDeleted event with status 'Deleted' and version incremented by 1, should update the state store with an InvoiceSnapshot in status=Deleted and version incremented by 1") {
-
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
@@ -112,7 +110,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         val invoiceId = randomUUID
         val command = aDeleteInvoiceCommand(None)
 
-        it("should emit a Failure CommandResult and DO NOT emit any event or snapshot") {
+        it("should emit a failed CommandResult and DO NOT emit any event or snapshot") {
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
@@ -125,8 +123,28 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         }
       }
 
+      describe("with the wrong expected version") {
+        val initialVersion = 1
+        val initialInvoiceSnapshot = anEmptyInvoiceSnapshot(initialVersion, InvoiceStatus.New)
+        val invoiceId = randomUUID
+        val command = aDeleteInvoiceCommand(Option(42))
 
-      // TODO Test the behaviour when the version does not match
+        it("should emit a failed CommandResult and DO NOT emit any event or snapshot, and do not update the state store") {
+          test(exactlyOnce)((driver) => {
+            implicit val d = driver
+
+            setSnapshotState(snapshotStore)(invoiceId, initialInvoiceSnapshot)
+
+            commandTopic.pipeIn(invoiceId, command)
+
+            assertNextCommandResultIsFailure(commandResultTopic)
+            assertSnapshotStateInvoiceStatusAndLineItemsAndVersion(snapshotStore)(invoiceId)(InvoiceStatus.New, Vector(), initialVersion)
+
+            assertNoMoreMessages(commandResultTopic, eventTopic, snapshotTopic)
+          })
+        }
+      }
+
     }
 
     describe("when receiving an AddLineItem command") {
@@ -138,7 +156,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
       val command = anAddLineItemCommand(newLineDescription, newLineQuantity, newLinePrice, Option(initialVersion))
 
       describe("on an existing empty invoice") {
-        it("should emit a successful CommandResult, an InvoiceSnapshot and an LineItemAdded event matching the added line, should update the state store") {
+        it("should emit a successful CommandResult, an InvoiceSnapshot and an LineItemAdded event, should update the state store") {
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
@@ -159,9 +177,85 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
       }
     }
 
-    // TODO Test removing a non-existing line item
+    describe("when receiving a DeleteLineItem command") {
+      val initialVersion = 42
+      val initialLineItems = Vector( LineItem("first item", 1.0, 12.3), LineItem("second item", 2.5, 11.2), LineItem("third item", 42.3, 12.34))
+      val initialInvoiceSnapshot = anInvoiceSnapshot(initialVersion, InvoiceStatus.New, initialLineItems)
+      val invoiceId = randomUUID
 
-    // TODO Test other commands
+      describe("for an existing item") {
+        val indexToRemove = 1
+        val deleteItemCommand = aRemoveItemCommand(Option(initialVersion), indexToRemove)
+
+        it("should emit a successful CommandResult, an InvoiceSnapshot and a LineItemRemoved event, should update the state store") {
+          test(exactlyOnce)((driver) => {
+            implicit val d = driver
+
+            setSnapshotState(snapshotStore)(invoiceId, initialInvoiceSnapshot)
+
+            commandTopic.pipeIn(invoiceId, deleteItemCommand)
+
+            assertNextCommandResultIsSuccess(commandResultTopic)
+            assertNextEventIsEventTypeAndVersionAndCommandId(eventTopic)(classOf[LineItemRemoved], initialVersion + 1, deleteItemCommand.commandId)
+
+            val expectedLineItems = initialLineItems filterNot ( _ == initialLineItems(indexToRemove))
+            assertNextSnapshotHasInvoiceStatusAndLineItemsAndVersion(snapshotTopic)(InvoiceStatus.New, expectedLineItems, initialVersion + 1)
+            assertSnapshotStateInvoiceStatusAndLineItemsAndVersion(snapshotStore)(invoiceId)(InvoiceStatus.New, expectedLineItems, initialVersion+1 )
+
+            assertNoMoreMessages(commandResultTopic, eventTopic, snapshotTopic)
+          })
+        }
+      }
+
+      describe("for a non existing item") {
+        val indexToRemove = 99
+        val deleteItemCommand = aRemoveItemCommand(Option(initialVersion), indexToRemove)
+
+        it("should emit a failed CommandResult and DO NOT emit any event or snapshot, and do not update the state store") {
+          test(exactlyOnce)((driver) => {
+            implicit val d = driver
+
+            setSnapshotState(snapshotStore)(invoiceId, initialInvoiceSnapshot)
+
+            commandTopic.pipeIn(invoiceId, deleteItemCommand)
+
+            assertNextCommandResultIsFailure(commandResultTopic)
+            assertSnapshotStateInvoiceStatusAndLineItemsAndVersion(snapshotStore)(invoiceId)(InvoiceStatus.New, initialLineItems, initialVersion )
+
+            assertNoMoreMessages(commandResultTopic, eventTopic, snapshotTopic)
+          })
+        }
+      }
+
+    }
+
+    describe("when receiving a PayInvoice command") {
+      val initialVersion = 1
+      val initialInvoiceSnapshot = anEmptyInvoiceSnapshot(initialVersion, InvoiceStatus.New)
+      val invoiceId = randomUUID
+      val payInvoiceCommand = aPayInvoiceCommand(Option(initialVersion))
+
+      it("should emit a successful CommandResult, an InvoiceSnapshot and a PaymentReceived event, should update the state store") {
+        test(exactlyOnce)((driver) => {
+          implicit val d = driver
+
+          setSnapshotState(snapshotStore)(invoiceId, initialInvoiceSnapshot)
+
+          commandTopic.pipeIn(invoiceId, payInvoiceCommand)
+
+          assertNextCommandResultIsSuccess(commandResultTopic)
+          assertNextEventIsEventTypeAndVersionAndCommandId(eventTopic)(classOf[PaymentReceived], initialVersion + 1, payInvoiceCommand.commandId)
+
+          val expectedStatus = InvoiceStatus.Paid
+          assertNextSnapshotHasInvoiceStatusAndLineItemsAndVersion(snapshotTopic)(expectedStatus, Vector(), initialVersion + 1)
+          assertSnapshotStateInvoiceStatusAndLineItemsAndVersion(snapshotStore)(invoiceId)(expectedStatus, Vector(), initialVersion+1 )
+
+          assertNoMoreMessages(commandResultTopic, eventTopic, snapshotTopic)
+        })
+      }
+    }
+
+    // ... might add more corner cases
   }
 
   def setSnapshotState(store: KVStore[UUID,InvoiceSnapshot])(invoiceId: UUID, state: InvoiceSnapshot )(implicit driver: () => Driver): KVStore[UUID,InvoiceSnapshot] = {
@@ -221,7 +315,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
 }
 
 
-object CommandHandlerTopologyDefinitionSpec {
+object CommandHandlerTopologySpec {
 
   val exactlyOnce = {
     val props = new Properties
@@ -229,40 +323,25 @@ object CommandHandlerTopologyDefinitionSpec {
     props
   }
 
-  def aCreateInvoiceCommand: Command = Command(
-    originId = randomUUID,
-    commandId = randomUUID,
-    expectedVersion = None,
-    CreateInvoice("a-customer", "a.customer@ema.il", now, now plusDays 1, List())
-  )
+  def aCommand(expVersion: Option[Int], payload: Command.Payload): Command = Command(randomUUID, randomUUID, expVersion, payload)
+  def aCreateInvoiceCommand: Command = aCommand(None, CreateInvoice("a-customer", "a.customer@ema.il", now, now plusDays 1, List()))
+  def aDeleteInvoiceCommand(expVersion: Option[Int]): Command = aCommand(expVersion, DeleteInvoice())
+  def anAddLineItemCommand(newLineDescription: String, newLineQuantity: Double, newLinePrice: Double, expVersion: Option[Int]): Command = aCommand(expVersion,  AddLineItem(newLineDescription, newLineQuantity, newLinePrice))
+  def aRemoveItemCommand(expVersion: Option[Int], index: Int) = aCommand(expVersion, RemoveLineItem(index))
+  def aPayInvoiceCommand(expVersion: Option[Int]) = aCommand(expVersion, PayInvoice())
 
-  def aDeleteInvoiceCommand(expVersion: Option[Int]): Command = Command(
-    originId = randomUUID,
-    commandId = randomUUID,
-    expectedVersion = expVersion,
-    DeleteInvoice()
-  )
-
-
-
-  def anAddLineItemCommand(newLineDescription: String, newLineQuantity: Double, newLinePrice: Double, expVersion: Option[Int]): Command = Command(
-    originId = randomUUID,
-    commandId = randomUUID,
-    expectedVersion = expVersion,
-    AddLineItem(newLineDescription, newLineQuantity, newLinePrice)
-  )
-
-  def anEmptyInvoiceSnapshot(version: Int, status: InvoiceStatus): InvoiceSnapshot = InvoiceSnapshot(
+  def anInvoiceSnapshot(version: Int, status: InvoiceStatus, lineItems: Vector[LineItem]) = InvoiceSnapshot(
     Invoice(
       Customer("a-customer", "a.customer@ema.il"),
       now,
       now plusDays 1,
-      Vector(),
+      lineItems,
       status,
       0.00
     ),
     version,
     Instant.now
   )
+  def anEmptyInvoiceSnapshot(version: Int, status: InvoiceStatus): InvoiceSnapshot = anInvoiceSnapshot(version, status, Vector())
 
 }
