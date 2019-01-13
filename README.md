@@ -93,8 +93,12 @@ Kafka  (`PLAINTEXT`)
 Zookeeper:
 - `zk1`: `localhost:2181`
 
+Schema Registry:
+- `schema-registry`: `http://localhost:8081`
+
 MySQL:
 - `localhost:33306`  (`root`/`secret` or `mysqluser`/`secret`)
+
 
 
 ## License

@@ -23,7 +23,8 @@ lazy val common = project
     libraryDependencies ++= commonDependencies ++ Seq(
       dependencies.log4s,
       dependencies.kafkaClients,
-      dependencies.avro4s
+      dependencies.avro4s,
+      dependencies.kafkaAvroSerializer
     )
   )
 
@@ -103,6 +104,7 @@ lazy val dependencies =
     val kafkaVersion            = "2.1.0"
     val mysqlConnectorVersion   = "8.0.12"
     val avro4sVersion           = "1.9.0"
+    val confluentClientVersion  = "5.1.0"
     val catsRetryVersion        = "0.2.0"
     val origamiVersion          = "5.0.1"
     val producerVersion         = "5.0.0"
@@ -112,6 +114,8 @@ lazy val dependencies =
     val slf4j           = "org.slf4j"             % "jcl-over-slf4j"        % slf4jVersion
     val kafkaClients    = "org.apache.kafka"      % "kafka-clients"         % kafkaVersion
     val kafkaStreams    = "org.apache.kafka"      % "kafka-streams"         % kafkaVersion
+    val kafkaAvroSerializer
+                        = "io.confluent"          % "kafka-avro-serializer" % confluentClientVersion
     val mysqlConnector  = "mysql"                 % "mysql-connector-java"  % mysqlConnectorVersion
     val log4s           = "org.log4s"             %% "log4s"                % log4sVersion
     val http4sBlaze     = "org.http4s"            %% "http4s-blaze-server"  % http4sVersion
@@ -158,7 +162,8 @@ lazy val commonSettings = Seq(
   resolvers ++= Seq(
     "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository",
     Resolver.sonatypeRepo("releases"),
-    Resolver.sonatypeRepo("snapshots")
+    Resolver.sonatypeRepo("snapshots"),
+    "confluent" at "https://packages.confluent.io/maven/"
   )
 )
 

@@ -9,6 +9,8 @@ import scala.concurrent.duration._
 object Config {
   val BootstrapServers = sys.env("BOOTSTRAP_SERVERS")
 
+  val SchemaRegistryUrl = sys.env("SCHEMA_REGISTRY_URL")
+
   object Stores {
     val Snapshots = "invoices.store.snapshots"
   }

@@ -13,6 +13,7 @@ import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.kafka.common.serialization.{Deserializer, Serde, Serializer}
 
+// FIXME Replace this with an implementation using CaseClassSerde
 object AvroSerde {
   implicit val instantToSchema: ToSchema[Instant] = new ToSchema[Instant] {
     override val schema: Schema = Schema.create(Schema.Type.STRING)
