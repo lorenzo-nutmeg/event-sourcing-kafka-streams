@@ -7,7 +7,7 @@ for implementing an event sourced system.
 
 ### Credits
 
-This project is based on [Amitay Horwitz's work](https://github.com/amitayh/event-sourcing-kafka-streams), 
+This project is a fork of [Amitay Horwitz's work](https://github.com/amitayh/event-sourcing-kafka-streams), 
 presented at [JEEConf 2018](https://speakerdeck.com/amitayh/event-sourcing-with-kafka-streams) 
 and [CodeMotion Milan 2018](https://speakerdeck.com/amitayh/building-event-sourced-systems-with-kafka-streams).
 
