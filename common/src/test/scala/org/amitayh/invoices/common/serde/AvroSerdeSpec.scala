@@ -4,82 +4,63 @@ import java.time.{Instant, LocalDate}
 import java.util.UUID
 import java.util.UUID.randomUUID
 
-import org.amitayh.invoices.common.domain.Event.InvoiceDeleted
+import org.amitayh.invoices.common.domain.Command.{apply => _, _}
+import org.amitayh.invoices.common.domain.Event._
 import org.amitayh.invoices.common.domain._
 import org.amitayh.invoices.common.serde.AvroSerdeSpec._
 import org.apache.kafka.common.serialization.Serde
-import org.scalatest.{FunSpec, Matchers, OptionValues}
+import org.scalatest.FlatSpec
 
-class AvroSerdeSpec extends FunSpec  with Matchers with OptionValues {
+class AvroSerdeSpec extends FlatSpec with SerdeBehavious {
 
-  describe("the CommandResult Avro Serde") {
-
-    val serde: Serde[CommandResult] = AvroSerde.CommandResultSerde
-
-    describe("given a successful CommandResult") {
-
-      val succCommandResult: CommandResult = aSuccessfulCommandResult
-      var serialized: Array[Byte] = Array()
-
-      it("should be able to serialize and deserialize back to the same content") {
-        assertItCanSerialiseAndDeserializeBack(serde)(succCommandResult)
-      }
-
-    }
+  // ...maybe there is a better way for not repeating the message
 
 
-    describe("given a failed CommandResult containing a VersionMismatch error") {
-      val error = VersionMismatch(Option(42), Option(13))
-      val failCommandResult: CommandResult = aFailedCommandResult(error)
-      it("should be able to serialize and deserialize back to the same content") {
-        assertItCanSerialiseAndDeserializeBack(serde)(failCommandResult)
-      }
-    }
-
-    describe("given a failed CommandResult containing a LineItemDoesNotExist error") {
-      val error = LineItemDoesNotExist(42)
-      val failCommandResult: CommandResult = aFailedCommandResult(error)
-      it("should be able to serialize and deserialize back to the same content") {
-        assertItCanSerialiseAndDeserializeBack(serde)(failCommandResult)
-      }
-    }
-
-    describe("given a failed CommandResult, containing a InvoiceAlreadyExists error") {
-      val error = InvoiceAlreadyExists()
-      val failCommandResult: CommandResult = aFailedCommandResult(error)
-      it("should be able to serialize and deserialize back to the same content") {
-        assertItCanSerialiseAndDeserializeBack(serde)(failCommandResult)
-      }
-    }
-
-    describe("given a failed CommandResult, containing a InvoiceDoesNotExist error") {
-      val error = InvoiceDoesNotExist()
-      val failCommandResult: CommandResult = aFailedCommandResult(error)
-      it("should be able to serialize and deserialize back to the same content") {
-        assertItCanSerialiseAndDeserializeBack(serde)(failCommandResult)
-      }
-    }
-
-    // TODO Test Event Serde
-    // TODO Test Command Serde
-    // TODO Test InvoiceSnapshot Serde
-  }
+  val commndResultSerde: Serde[CommandResult] = AvroSerde.CommandResultSerde
+  "A CommandResult Serde with a successful CommandResult" should behave like roundtripSerDe(commndResultSerde, aSuccessfulCommandResult)
+  "A CommandResult Serde with a failed CommandResult containing a VersionMismatch" should behave like roundtripSerDe(commndResultSerde, aFailedCommandResult(VersionMismatch(Option(42), Option(13))))
+  "A CommandResult Serde with a failed CommandResult containing a LineItemDoesNotExist" should behave like roundtripSerDe(commndResultSerde, aFailedCommandResult(LineItemDoesNotExist(42)))
+  "A CommandResult Serde with a failed CommandResult containing a InvoiceAlreadyExists" should behave like roundtripSerDe(commndResultSerde, aFailedCommandResult(InvoiceAlreadyExists()))
+  "A CommandResult Serde with a failed CommandResult containing a InvoiceDoesNotExist" should behave like roundtripSerDe(commndResultSerde, aFailedCommandResult(InvoiceDoesNotExist()))
 
 
 
+  val eventSerde: Serde[Event] = AvroSerde.EventSerde
+  "An Event Serde with an InvoiceCreated event" should behave like roundtripSerDe(eventSerde, anInvoiceCreatedEvent)
+  "An Event Serde with an InvoiceDeleted event" should behave like roundtripSerDe(eventSerde, anInvoiceDeletedEvent)
+  "An Event Serde with a LineItemAdded event" should behave like roundtripSerDe(eventSerde, aLineItemAddedEvent)
+  "An Event Serde with a LineItemRemoved event" should behave like roundtripSerDe(eventSerde, aLineItemRemovedEvent)
+  "An Event Serde with a PaymentReceived event" should behave like roundtripSerDe(eventSerde, aPaymentReceivedEvent)
 
-  def assertItCanSerialiseAndDeserializeBack[T](serde: Serde[T])(t: T) = {
-    val ser: Array[Byte] = serde.serializer.serialize("a-topic", t)
-    assert(ser.size > 0, "Serialized content should not be empty")
-    val des: T = serde.deserializer.deserialize("another-topic", ser)
 
-    des should be(t)
-  }
+  val snapshotSerde: Serde[InvoiceSnapshot] = AvroSerde.SnapshotSerde
+  "An InvoiceSnapshot Serde with an empty, new InvoiceSnapshot" should behave like roundtripSerDe(snapshotSerde, anEmptyNewInvoiceSnapshot)
+  "An InvoiceSnapshot Serde with a two-items, new InvoiceSnapshot" should behave like roundtripSerDe(snapshotSerde, anInvoiceSnapshotWithTwoLineItems)
+
+
+  val commandSerde: Serde[Command] = AvroSerde.CommandSerde
+  "A Command Serde with a CreateInvoice command" should behave like roundtripSerDe(commandSerde, aCreateInvoiceCommand)
+  "A Command Serde with a DeleteInvoice command" should behave like roundtripSerDe(commandSerde, aDeleteInvoiceCommand)
+  "A Command Serde with a AddLineItem command" should behave like roundtripSerDe(commandSerde, anAddLineItemCommand)
+  "A Command Serde with a RemoveLineItem command" should behave like roundtripSerDe(commandSerde, aRemoveLineItemCommand)
+  "A Command Serde with a PayInvoice command" should behave like roundtripSerDe(commandSerde, aPayInvoiceCommand)
+
 }
+
+
 
 object AvroSerdeSpec {
 
-  def anInvoiceDeletedEvent(commandId: UUID): Event = Event(1, Instant.now, commandId, InvoiceDeleted())
+
+  def anInvoiceCreatedEvent = Event(1, Instant.now, randomUUID, InvoiceCreated("a-customer", "a.customer@ema.il", LocalDate.now, LocalDate.now plusDays 1))
+  def aLineItemAddedEvent = Event(43, Instant.now, randomUUID, LineItemAdded("idem description", 43.0, 12.34))
+  def aLineItemRemovedEvent = Event(44, Instant.now, randomUUID, LineItemRemoved(7))
+  def aPaymentReceivedEvent = Event(44, Instant.now, randomUUID, PaymentReceived(12.34))
+  def anInvoiceDeletedEvent: Event = anInvoiceDeletedEvent(randomUUID)
+  def anInvoiceDeletedEvent(commandId: UUID) = Event(42, Instant.now, commandId, InvoiceDeleted())
+
+
+  def anEmptyNewInvoiceSnapshot: InvoiceSnapshot = anEmptyNewInvoiceSnapshot(1)
 
   def anEmptyNewInvoiceSnapshot(version: Int): InvoiceSnapshot = InvoiceSnapshot(
     Invoice(
@@ -97,6 +78,19 @@ object AvroSerdeSpec {
   def followingDeletedInvoiceSnapshot(prev: InvoiceSnapshot): InvoiceSnapshot = InvoiceSnapshot(
     prev.invoice,
     prev.version + 1,
+    Instant.now
+  )
+
+  def anInvoiceSnapshotWithTwoLineItems: InvoiceSnapshot = InvoiceSnapshot(
+    Invoice(
+      Customer("a-customer", "a.customer@ema.il"),
+      LocalDate.now,
+      LocalDate.now plusDays 1,
+      Vector( LineItem("an item", 1.0, 11.0), LineItem("another item", 2.0, 12.0)),
+      InvoiceStatus.New,
+      0.00
+    ),
+    1,
     Instant.now
   )
 
@@ -126,5 +120,17 @@ object AvroSerdeSpec {
     )
   }
 
+  def aCommandWith(payload: Command.Payload) = Command( randomUUID, randomUUID, Option(42), payload)
+
+
+  def aCreateInvoiceCommand = aCommandWith(CreateInvoice("a-customer", "a.customer@ema.il", LocalDate.now, LocalDate.now plusDays 1, List()))
+
+  def aDeleteInvoiceCommand = aCommandWith(DeleteInvoice())
+
+  def anAddLineItemCommand = aCommandWith(AddLineItem("item-description", 42.0, 12.23))
+
+  def aRemoveLineItemCommand = aCommandWith(RemoveLineItem(3))
+
+  def aPayInvoiceCommand = aCommandWith(PayInvoice())
 }
 

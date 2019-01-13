@@ -43,6 +43,4 @@ object Event {
     override def apply(invoice: Invoice): Invoice = invoice.delete
   }
 
-  case class InvoiceSentToCustomer() extends Payload
-
 }
