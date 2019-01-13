@@ -58,7 +58,7 @@ lazy val commandhandler = project
       dependencies.kafkaStreamsTestUtils % Test
     )
   )
-  .dependsOn(common, streamprocessor)
+  .dependsOn(common, streamprocessor % "test->test;compile->compile")
 
 lazy val listprojector = project
   .settings(
@@ -69,7 +69,7 @@ lazy val listprojector = project
       dependencies.mysqlConnector % Runtime
     )
   )
-  .dependsOn(common, streamprocessor, listdao)
+  .dependsOn(common, streamprocessor % "test->test;compile->compile", listdao)
 
 lazy val web = project
   .settings(
@@ -124,6 +124,7 @@ lazy val dependencies =
     val doobieHikari    = "org.tpolecat"          %% "doobie-hikari"        % doobieVersion
     val avro4s          = "com.sksamuel.avro4s"   %% "avro4s-core"          % avro4sVersion
     val catsRetry       = "com.github.cb372"      %% "cats-retry-core"      % catsRetryVersion
+
 
     // Test dependencies
     val scalaTest       = "org.scalatest"         %% "scalatest"            % scalaTestVersion

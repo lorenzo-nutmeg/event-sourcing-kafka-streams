@@ -4,8 +4,8 @@ sealed trait InvoiceError {
   def message: String
 }
 
-case class VersionMismatch(actual: Int, expected: Option[Int]) extends InvoiceError {
-  override def message: String = s"Version mismatch - expected $expected, actually $actual"
+case class VersionMismatch(actual: Option[Int], expected: Option[Int]) extends InvoiceError {
+  override def message: String = s"Version mismatch - expected '$expected', actually '$actual'"
 }
 
 case class LineItemDoesNotExist(index: Int) extends InvoiceError {
@@ -13,9 +13,9 @@ case class LineItemDoesNotExist(index: Int) extends InvoiceError {
 }
 
 case class InvoiceDoesNotExist() extends InvoiceError {
-  override def message: String = "Trying to modify the state of a non-existing Invoice"
+  override def message: String = s"Trying to modify the state of a non-existing Invoice"
 }
 
 case class InvoiceAlreadyExists() extends InvoiceError {
-  override def message: String = "Trying to create an invoice that already exists"
+  override def message: String = s"Trying to create an invoice that already exists"
 }

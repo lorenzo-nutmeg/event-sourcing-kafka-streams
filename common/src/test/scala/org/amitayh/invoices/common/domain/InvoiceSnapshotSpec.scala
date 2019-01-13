@@ -34,7 +34,7 @@ class InvoiceSnapshotSpec extends FunSpec with Matchers with EitherValues {
         val expectedVersion = Some(13)
 
         it("should report a version mismatch") {
-          validateVersion(expectedVersion).left.value should be (VersionMismatch(snapshotVersion, expectedVersion))
+          validateVersion(expectedVersion).left.value should be (VersionMismatch(Option(snapshotVersion), expectedVersion))
         }
       }
     }

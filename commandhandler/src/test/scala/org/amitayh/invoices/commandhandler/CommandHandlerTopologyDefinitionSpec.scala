@@ -61,7 +61,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         val invoiceId = randomUUID
         val command = aCreateInvoiceCommand
 
-        ignore("should emit a Failure CommandResult and DO NOT emit any event or snapshot and do not change the state of the existing invoice") {
+        it("should emit a Failure CommandResult and DO NOT emit any event or snapshot and do not change the state of the existing invoice") {
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
@@ -112,7 +112,7 @@ class CommandHandlerTopologyDefinitionSpec extends FunSpec with TopologyTest wit
         val invoiceId = randomUUID
         val command = aDeleteInvoiceCommand(None)
 
-        ignore("should emit a Failure CommandResult and DO NOT emit any event or snapshot") {
+        it("should emit a Failure CommandResult and DO NOT emit any event or snapshot") {
           test(exactlyOnce)((driver) => {
             implicit val d = driver
 
